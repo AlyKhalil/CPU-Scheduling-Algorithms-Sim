@@ -1,11 +1,21 @@
 #include <bits/stdc++.h> //includes almost all standard libraries
 using namespace std; //uses std automatically
+struct process{
+    string name;
+    int arrival;
+    int service;
+};
+struct algorithm{
+    char id;
+    int q = -1;
+};
+
 
 //global variables:
 
 string operation; //trace or stats
-vector<tuple<char,int>> algorithms;
-vector<tuple<string,int,int>> processes;
+vector<algorithm> algorithms;
+vector<process> processes;
 int last_instant;
 int process_count;
 //output timeline for trace
@@ -21,20 +31,19 @@ const string algorithm_names[8] = {"FSFC", "RR", "SPN", "SRT", "HRRN", "FB-1",
 void parse_algorithms(string algorithm_line){
     stringstream stream(algorithm_line);
     string temp;
-    while(getline(stream, temp, ',')){    
-        char alg_id = temp[0];
-        int q = -1;
+    while(getline(stream, temp, ',')){ 
+        algorithm alg;   
+        alg.id = temp[0];
         if (temp.size() > 2){
             temp = temp.substr(2);
-            q = stoi(temp);
+            alg.q = stoi(temp);
         }
-
-        algorithms.push_back(make_tuple(alg_id, q));
+       algorithms.push_back(alg);
     }
 
 }
 
-void parse_processes(string process_line){
+void parse_processes(string process_line, int i){
     string process_name;
     int arrival_time;
     int service_time;
@@ -49,10 +58,7 @@ void parse_processes(string process_line){
 
     // cout << process_name << ", " << arrival_time << ", " << service_time << endl;
 
-    cout << process_line << endl;
-
     getline(stream, temp, ',');
-    cout << temp << endl << endl;
     process_name = temp;
     if (process_name.empty()) {
         cout << "Warning: Process name is empty!" << endl;
@@ -70,8 +76,9 @@ void parse_processes(string process_line){
         cout << "Warning: Service time might be incorrect!" << endl;
     }
 
-    
-    processes.push_back(make_tuple(process_name, arrival_time, service_time));
+    processes[i].name = process_name;
+    processes[i].arrival = arrival_time;
+    processes[i].service = service_time;
 
 }
 
@@ -82,11 +89,9 @@ void parse(){
     //parsing processes
     string process_line;
     processes.resize(process_count);
-    cout<<process_count<<endl;
     for(int i = 0;i < process_count;i++){
         cin >> process_line;
-        cout << process_line << endl;
-        parse_processes(process_line);
+        parse_processes(process_line, i);
     }
     //parsing algorithms
     parse_algorithms(algorithms_line);
@@ -110,13 +115,13 @@ void print_timeline(){
 
     for(int x = 0;x < (int)algorithms.size();x++){
 
-        if (get<1>(algorithms[x]) != -1){
-            alg_indx = (get<0>(algorithms[x]) - '0') -1; 
+        if (algorithms[x].q != -1){
+            alg_indx = (algorithms[x].id - '0') -1; 
             alg_name = algorithm_names[alg_indx];
             cout << alg_name << "-";
-            cout << left << setw(alg_name.size() + 2) << get<1>(algorithms[x]); 
+            cout << left << setw(alg_name.size() + 2) << algorithms[x].q; 
         }else{
-            alg_indx = (get<0>(algorithms[x]) - '0') -1;
+            alg_indx = (algorithms[x].id - '0') -1;
             alg_name = algorithm_names[alg_indx];
             cout << left << setw(3 + alg_name.size()) << alg_name;
         }
@@ -135,7 +140,7 @@ void print_timeline(){
         
         for (int i = 0;i < process_count;i++){
             
-            cout << get<0>(processes[i]);
+            cout << left << setw(6) <<processes[i].name;
             
             for (int j = 0;j < last_instant;j++){
                 cout << "|" << timeline[i][j];
@@ -158,17 +163,7 @@ void print_stats(){
 
 int main(){
     parse();
-    // print_timeline();
-    // parse_processes("A,0,3");
-    // Print the processes
-    for (int i = 0; i < 1; i++) {
-        cout << "Process " << i << ": ";
-        cout << "Name: " << get<0>(processes[i]) << ", ";
-        cout << "Arrival Time: " << get<1>(processes[i]) << ", ";
-        cout << "Service Time: " << get<2>(processes[i]) << endl;
-    }
-
-
+    print_timeline();
 
     return 0;
 }
