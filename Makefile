@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall
 
 # Output executable file
-OUTPUT = sim
+OUTPUT = lab6
 
 # Source files
 SRCS = cpu_scheduling.cpp
@@ -25,4 +25,10 @@ $(OUTPUT): $(OBJS)
 # Clean up object and executable files
 clean:
 	rm -f $(OBJS) $(OUTPUT)
+
+run:$(OUTPUT)
+	./$(OUTPUT) < testcases/01a-input.txt
+
+
+
 
