@@ -160,6 +160,7 @@ void print_timeline(int x){
     for (int i = 0;i < last_instant + 6;i++)
         cout << "--";
 
+    cout << endl;
 }
 
 //NOT DONE !!!!!
@@ -243,6 +244,7 @@ void print_processes(){
 void FCFS(){
     sort_processes();
     int start_time = processes[0].arrival;
+    
 
     for (int i = 0;i < process_count;i++){
         process p = processes[i];
@@ -264,94 +266,86 @@ void FCFS(){
 }
 
 //returns index of shortest process (SPN helper)
-int find_shortest_process(vector<process> pool){
+int find_shortest_process(const vector<process>& pool) {
+    if (pool.empty()) 
+        return -1;
+
     int min_index = 0;
-    if (pool.size() == 1){
-        return min_index;
-    }
-    for (int i = 1;i < (int)pool.size();i++){
-        if ((pool[i].service < pool[min_index].service) && processes[i].done == false){
+
+    for (int i = 1; i < (int)pool.size(); i++) {
+        //compare service times and choose the shortest
+        if (pool[i].service < pool[min_index].service) {
             min_index = i;
         }
     }
 
-    return min_index;
+    return min_index; 
 }
 
-//NOT DONE!!!!
+
 void SPN(){
-    // sort_processes();
-    // int finished_processes = 0;
-    // int start_time = processes[0].arrival;
-    // vector<process> pool;
+    sort_processes(); // Ensure processes are sorted by arrival time
+    int current_time = processes[0].arrival;
 
-    // //checks which of the processes that arrive at the same time
-    // for (int i = 0 ;i < process_count;i++){
-    //     if ((processes[i].arrival == start_time) && processes[i].done == false){
-    //         pool.push_back(processes[i]);
-    //     }
-    // }
+    while (true) {
+        vector<process> ready_pool;
 
-    // int min_index = find_shortest_process(pool);
-    // //-----------------------------------------------
-    // cout << "min index: " << min_index << endl;
-    // //-----------------------------------------------
-    // while (finished_processes < process_count){
-    //     process p = processes[min_index];
+        // Build the pool of ready processes
+        for (int i = 0; i < process_count; i++) {
+            if (!processes[i].done && processes[i].arrival <= current_time) {
+                ready_pool.push_back(processes[i]);
+            }
+        }
 
-    //     //calculating stats
-    //     finish_time[min_index] = start_time + p.service;
-    //     turn_around[min_index] = finish_time[min_index] - p.arrival;
-    //     norm_turn[min_index] = (float)turn_around[min_index] / p.service;
+        // If the pool is empty and no process is left, break
+        if (ready_pool.empty()) {
+            bool all_done = true;
+            for (int i = 0; i < process_count; i++) {
+                if (!processes[i].done) {
+                    all_done = false;
+                    current_time = min(current_time, processes[i].arrival);
+                    break;
+                }
+            }
+            if (all_done) 
+                break;
+            else
+                continue;
+        }
 
-    //     for (int j = start_time;j < finish_time[min_index];j++){
-    //         timeline[min_index][j] = '*';
-    //     }
-        
-    //     processes[min_index].done = true; //p.done = true doesn't work (not a pointer) 
-    //     finished_processes += 1;
-    //     if (finished_processes == process_count){
-    //         break;
-    //     }
-    //     start_time = finish_time[min_index];
+        int shortest_index = find_shortest_process(ready_pool);
+        if (shortest_index == -1) {
+            //if no process is ready
+            current_time++;
+            continue;
+        }
 
-    //     //-----------------------------------------------
-    //     cout << "pool before:" << endl;
-    //     for (int i = 0;i < (int)pool.size();i++){
-    //         cout << pool[i].name << ", " << pool[i].arrival << endl;
-    //     }
-    //     cout << "------------------" << endl;
-    //     //-----------------------------------------------
+        //mapping back to the original processes vector
+        int process_index = 0;
+        for (int i = 0; i < process_count; i++) {
+            if (processes[i].name == ready_pool[shortest_index].name) {
+                process_index = i;
+                break;
+            }
+        }
 
-    //     //empties the pool
-    //     pool.resize(0);
-    //     //-----------------------------------------------
-    //     cout << "pool:" << endl;
-    //     for (int i = 0;i < (int)pool.size();i++){
-    //         cout << pool[i].name << ", " << pool[i].arrival << endl;
-    //     }
-    //     cout << "------------------" << endl;
-    //     //-----------------------------------------------
-    //     //finds pool of candidate processes
-    //     int  k = 0;
-    //     while (processes[k].arrival <= start_time){
-    //         cout << "process name inserted in pool:" << processes[k].name << ", " << processes[k].done << endl;
-    //         pool.push_back(processes[k]);
-    //         k++;
-    //     }
+        process& p = processes[process_index];
 
-    //     //if no process arrived before or when finishing the running process,
-    //     //then the next process that must be chosen is the next process after the min index
-    //     //since the processes are sorted according to arrival times 
-    //     if (pool.empty()){
-    //         pool.push_back(processes[min_index + 1]);
-    //     }
+        //calculating stats
+        int start_time = current_time;
+        finish_time[process_index] = start_time + p.service;
+        turn_around[process_index] = finish_time[process_index] - p.arrival;
+        norm_turn[process_index] = (float)turn_around[process_index] / p.service;
 
-    //     min_index = find_shortest_process(pool);
-    //     cout << "min index: " << min_index << endl;
-    // }    
+        for (int t = start_time; t < finish_time[process_index]; t++) {
+            timeline[process_index][t] = '*';
+        }
 
-    // reset_processes();
+        //mark process as done and advance current time
+        p.done = true;
+        current_time = finish_time[process_index];
+    }
+
 }
 
 void RR(){
@@ -377,6 +371,15 @@ void FB_2i(){
 void Aging(){
 
 }
+
+void reset_timeline() {
+    for(int i = 0;i < process_count;i++){
+        for(int j = 0;j < last_instant;j++){
+            timeline[i][j]= '.';
+        }
+    }
+}
+
 
 void run(){
     for (int i = 0;i < (int)algorithms.size();i++){
@@ -450,6 +453,8 @@ void run(){
         }else{
             cout << "Invalid Operation" << endl;
         }
+
+        reset_timeline();
     }
 }
 
