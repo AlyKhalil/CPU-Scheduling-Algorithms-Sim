@@ -6,10 +6,20 @@ struct process{
     int arrival;
     int service;
     bool done = false;
+    int remaining_time; 
+    //remaining time must be initialized when parsing, 
+    //reamining time = service is wrong as service doesnt have a value yet
 };
 struct algorithm{
     char id; // 1->8
     int q = -1;
+};
+
+//comparator for priority_queue
+struct ComparePair {
+    bool operator()(const pair<int, process>& a, const pair<int, process>& b) {
+        return a.first > b.first; //compare only based on the first element
+    }
 };
 
 
@@ -33,6 +43,8 @@ vector<float> norm_turn;
 
 const string algorithm_names[8] = {"FSFC", "RR", "SPN", "SRT", "HRRN", "FB-1", 
 "FB-2^i", "AGING"};
+
+//--------------------Parsing Section-------------------------------------------
 
 void parse_algorithms(string algorithm_line){
     stringstream stream(algorithm_line);
@@ -77,6 +89,7 @@ void parse_processes(string process_line, int i){
     processes[i].name = process_name;
     processes[i].arrival = arrival_time;
     processes[i].service = service_time;
+    processes[i].remaining_time = service_time;
 
 }
 
@@ -106,17 +119,52 @@ void parse(){
     }
 }
 
-//resets the done variable of all processes to false
+//------------------------------------------------------------------------------
+
+//---------------------Helper Finctions-----------------------------------------
+
+//resets the done and remaing_time variables of all processes
 void reset_processes(){
     for (int i=0;i < process_count;i++){
         processes[i].done = false;
+        processes[i].remaining_time = processes[i].service;
     }
 }
 
-//NOT DONE !!!!
+//DONE (Sorts by arrival times)
 void sort_processes(){
-    
+        sort(processes.begin(), processes.end(),
+        [](const process& a, const process& b) {return a.arrival < b.arrival;});
 }
+
+//returns index of shortest process (SPN helper)
+int find_shortest_process(const vector<process>& pool) {
+    if (pool.empty()) 
+        return -1;
+
+    int min_index = 0;
+
+    for (int i = 1; i < (int)pool.size(); i++) {
+        //compare service times and choose the shortest
+        if (pool[i].service < pool[min_index].service) {
+            min_index = i;
+        }
+    }
+
+    return min_index; 
+}
+
+
+void reset_timeline() {
+    for(int i = 0;i < process_count;i++){
+        for(int j = 0;j < last_instant;j++){
+            timeline[i][j]= '.';
+        }
+    }
+}
+
+
+
 
 void print_timeline(int x){
     int alg_indx;
@@ -162,6 +210,7 @@ void print_timeline(int x){
 
     cout << endl;
 }
+
 
 //NOT DONE !!!!!
 void print_stats(int x){
@@ -233,6 +282,7 @@ void print_stats(int x){
 
 }
 
+
 //tracing fn
 void print_processes(){ 
     for (int i = 0;i < process_count;i++){
@@ -241,6 +291,9 @@ void print_processes(){
     }
 }
 
+//------------------------------------------------------------------------------
+
+//DONE
 void FCFS(){
     sort_processes();
     int start_time = processes[0].arrival;
@@ -265,24 +318,7 @@ void FCFS(){
     }
 }
 
-//returns index of shortest process (SPN helper)
-int find_shortest_process(const vector<process>& pool) {
-    if (pool.empty()) 
-        return -1;
-
-    int min_index = 0;
-
-    for (int i = 1; i < (int)pool.size(); i++) {
-        //compare service times and choose the shortest
-        if (pool[i].service < pool[min_index].service) {
-            min_index = i;
-        }
-    }
-
-    return min_index; 
-}
-
-
+//DONE
 void SPN(){
     sort_processes(); // Ensure processes are sorted by arrival time
     int current_time = processes[0].arrival;
@@ -348,37 +384,144 @@ void SPN(){
 
 }
 
+
 void RR(){
 
 }
+
 
 void SRT(){
 
 }
 
+
 void HRRN(){
 
 }
 
+//DONE
 void FB_1(){
+    //min heap
+    //pair<priority, process index>
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> min_heap;
+    
+    int k = 0;
+    
+    //find processes that arrive at time = 0
+    while (k < process_count && processes[k].arrival == 0){
+        min_heap.push(make_pair(0, k));
+        k++;
+    }
+     
+    int process_index;
+    int priority;
+    for (int i = 0;i < last_instant;i++){
+        if (!min_heap.empty()){
+            priority = min_heap.top().first;
+            process_index = min_heap.top().second;
+            min_heap.pop();
+
+            timeline[process_index][i] = '*';
+            processes[process_index].remaining_time--;
+
+            //finds processes that will arrive at the next iteration
+            //must be b4 pushing into min_heap
+            while (k < process_count && processes[k].arrival == i+1){
+                min_heap.push(make_pair(0, k));
+                k++;       
+            }
+
+            if (processes[process_index].remaining_time == 0){
+                //calculating stats
+                finish_time[process_index] = i;
+                turn_around[process_index] = finish_time[process_index] - processes[process_index].arrival;
+                norm_turn[process_index] = (float)turn_around[process_index] / processes[process_index].service;
+
+            }else{
+                if (!min_heap.empty())
+                    min_heap.push(make_pair(priority+1, process_index));
+                else
+                    min_heap.push(make_pair(priority, process_index));
+            }
+
+        }
+
+        //finds processes that will arrive at the next iteration
+        while (k < process_count && processes[k].arrival == i+1){
+            min_heap.push(make_pair(0, k));
+            k++;       
+        }
+
+    }
 
 }
 
+//DONE
 void FB_2i(){
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> min_heap;
+    
+    int k = 0;
+    
+    //find processes that arrive at time = 0
+    while (k < process_count && processes[k].arrival == 0){
+        min_heap.push(make_pair(0, k));
+        k++;
+    }
+     
+    int process_index;
+    int priority;
+    for (int i = 0;i < last_instant;i++){
+        if (!min_heap.empty()){
+            priority = min_heap.top().first;
+            process_index = min_heap.top().second;
+            min_heap.pop();
+
+            int q = pow(2, priority);
+            int time_warp = i;
+            while ((time_warp < i + q) && processes[process_index].remaining_time > 0){
+                timeline[process_index][time_warp] = '*';
+                processes[process_index].remaining_time--;
+                time_warp++;
+            }
+
+
+            //finds processes that will arrive at the next iteration
+            while (k < process_count && processes[k].arrival <= i+1){
+                min_heap.push(make_pair(0, k));
+                k++;       
+            }
+
+            if (processes[process_index].remaining_time == 0){
+                //calculating stats
+                finish_time[process_index] = i;
+                turn_around[process_index] = finish_time[process_index] - processes[process_index].arrival;
+                norm_turn[process_index] = (float)turn_around[process_index] / processes[process_index].service;
+
+            }else{
+                if (!min_heap.empty())
+                    min_heap.push(make_pair(priority+1, process_index));
+                else
+                    min_heap.push(make_pair(priority, process_index));
+            }
+
+            i = time_warp - 1;
+        }
+
+        //finds processes that will arrive at the next iteration
+        while (k < process_count && processes[k].arrival <= i+1){
+            min_heap.push(make_pair(0, k));
+            k++;       
+        }
+
+    }
 
 }
+
 
 void Aging(){
 
 }
 
-void reset_timeline() {
-    for(int i = 0;i < process_count;i++){
-        for(int j = 0;j < last_instant;j++){
-            timeline[i][j]= '.';
-        }
-    }
-}
 
 
 void run(){
@@ -455,13 +598,15 @@ void run(){
         }
 
         reset_timeline();
+        reset_processes();
     }
 }
 
 int main(){
     parse();
-    print_processes();
+    sort_processes();
+    //print_processes();
     run();
-
+    //FB_1();
     return 0;
 }

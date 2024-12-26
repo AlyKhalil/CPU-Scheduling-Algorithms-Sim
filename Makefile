@@ -27,7 +27,7 @@ clean:
 	rm -f $(OBJS) $(OUTPUT)
 
 run:$(OUTPUT)
-	./$(OUTPUT) < testcases/01a-input.txt
+	./$(OUTPUT) < testcases/08a-input.txt
 
 
 
