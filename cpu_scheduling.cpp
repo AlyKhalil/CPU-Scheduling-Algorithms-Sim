@@ -164,8 +164,6 @@ void reset_timeline() {
 }
 
 
-
-
 void print_timeline(int x){
     int alg_indx;
     string alg_name;
@@ -181,7 +179,7 @@ void print_timeline(int x){
         cout << left << setw(7) << alg_name;
     }
 
-    for (int i = 0;i < last_instant;i++){
+    for (int i = 0;i <= last_instant;i++){
             cout << left << setw(2) << i%10;
         }
 
@@ -210,7 +208,6 @@ void print_timeline(int x){
 
     cout << endl;
 }
-
 
 //NOT DONE !!!!!
 void print_stats(int x){
@@ -281,7 +278,6 @@ void print_stats(int x){
 
 
 }
-
 
 //tracing fn
 void print_processes(){ 
@@ -384,13 +380,77 @@ void SPN(){
 
 }
 
+//DONE (try other test cases)
+void RR(int q){
+    queue<int> p_queue;
+    int k = 0;
+    int j;
+    while (k < process_count && processes[k].arrival == 0){
+        p_queue.push(k);
+        k++;
+    }
 
-void RR(){
+    for (int i = 0;i < last_instant;i++){
+        j = p_queue.front();
+        p_queue.pop();
+    
+        int time_warp = i;
+        while ((time_warp < i + q) && processes[j].remaining_time > 0){
+            timeline[j][time_warp] = '*';
+            processes[j].remaining_time--;
+            time_warp++;
+        }
+
+        while (k < process_count && processes[k].arrival <= i+1){
+            p_queue.push(k);
+            k++;
+        }
+
+        if (processes[j].remaining_time == 0){
+            finish_time[j] = time_warp;
+            turn_around[j] = finish_time[j] - processes[j].arrival;
+            norm_turn[j] = (float)turn_around[j] / processes[j].service;
+        }else{
+            p_queue.push(j);
+        }
+
+        i = time_warp-1;
+    }
 
 }
 
-
+//DONE (try more tests)
 void SRT(){
+    //min_heap of remaining time and process index
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> min_heap;
+    int k = 0;
+    pair<int, int> p;
+    while (k < process_count && processes[k].arrival == 0){
+        min_heap.push(make_pair(processes[k].remaining_time,k));
+        k++;
+    }
+
+    for (int i = 0;i < last_instant;i++){
+        p = min_heap.top();
+        min_heap.pop();
+        
+        timeline[p.second][i] = '*';
+        processes[p.second].remaining_time--;
+
+        if (processes[p.second].remaining_time == 0){
+            finish_time[p.second] = i;
+            turn_around[p.second] = finish_time[p.second] - processes[p.second].arrival;
+            norm_turn[p.second] = (float)turn_around[p.second] / processes[p.second].service;
+        }else{
+            min_heap.push(make_pair(processes[p.second].remaining_time, p.second));
+        }
+
+        while (k < process_count && processes[k].arrival <= i+1){
+            min_heap.push(make_pair(processes[k].remaining_time, k));
+            k++;
+        }
+
+    }
 
 }
 
@@ -493,7 +553,7 @@ void FB_2i(){
 
             if (processes[process_index].remaining_time == 0){
                 //calculating stats
-                finish_time[process_index] = i;
+                finish_time[process_index] = time_warp;
                 turn_around[process_index] = finish_time[process_index] - processes[process_index].arrival;
                 norm_turn[process_index] = (float)turn_around[process_index] / processes[process_index].service;
 
@@ -523,7 +583,6 @@ void Aging(){
 }
 
 
-
 void run(){
     for (int i = 0;i < (int)algorithms.size();i++){
 
@@ -535,7 +594,7 @@ void run(){
                     FCFS();
                     break;
                 case '2':
-                    RR();
+                    RR(alg.q);
                     break;
                 case '3':
                     SPN();
@@ -567,7 +626,7 @@ void run(){
                     FCFS();
                     break;
                 case '2':
-                    RR();
+                    RR(alg.q);
                     break;
                 case '3':
                     SPN();
