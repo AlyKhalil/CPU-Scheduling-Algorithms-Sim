@@ -2,17 +2,81 @@
 #include <format>
 using namespace std; //uses std automatically
 struct process{
+   
     string name;
     int arrival;
     int service;
     bool done = false;
     int remaining_time; 
-    //remaining time must be initialized when parsing, 
-    //reamining time = service is wrong as service doesnt have a value yet
+    int current_priority;
+    int initial_priority;
+    int waiting_time = 0;
+    int index;
+    // //remaining time must be initialized when parsing, 
+    // //reamining time = service is wrong as service doesnt have a value yet
+    void incrementPriority() {
+        current_priority++;
+    }
+    void resetPriority() {
+        current_priority = initial_priority;
+    }
+    bool operator==(const process& other) const {
+        return name == other.name && arrival == other.arrival && service == other.service && done == other.done && remaining_time == other.remaining_time && current_priority == other.current_priority && initial_priority == other.initial_priority && waiting_time == other.waiting_time && index == other.index;
+    }
+
+    bool operator!=(const process& other) const {
+        return name != other.name || arrival != other.arrival || service != other.service || done != other.done || remaining_time != other.remaining_time || current_priority != other.current_priority || initial_priority != other.initial_priority || waiting_time != other.waiting_time || index != other.index;
+    }
+   
+};
+
+
+struct ready_queue {
+    std::vector<process> queue;
+
+    // Add a process to the queue
+    void enqueue(const process& p) {
+        queue.push_back(p);
+    }
+
+    // Remove and return the front-most process
+    process dequeue() {
+        if (queue.empty()) {
+            throw std::runtime_error("Queue is empty. Cannot dequeue.");
+        }
+        process front = queue.front();
+        queue.erase(queue.begin());
+        return front;
+    }
+     // Get the process with the highest priority
+    process getHighestPriorityProcess() {
+        if (queue.empty()) {
+            throw std::runtime_error("Queue is empty. Cannot get highest priority process.");
+        }
+        return *std::max_element(queue.begin(), queue.end(),
+            [](const process& a, const process& b) {
+                return a.current_priority < b.current_priority; // Smaller priority value means higher priority
+            });
+    }
+
+    // Check if the queue is empty
+    bool isEmpty() const {
+        return queue.empty();
+    }
+
+     // Erase a specific process from the queue
+    void erase(const process& p) {
+        auto it = std::find(queue.begin(), queue.end(), p);
+        if (it != queue.end()) {
+            queue.erase(it);
+        } else {
+            throw std::runtime_error("Process not found in the queue.");
+        }
+    }
 };
 struct algorithm{
     char id; // 1->8
-    int q = -1;
+    int q = -1; //quantum for RR and Aging
 };
 
 //comparator for max_heap priority_queue in HRRN
@@ -664,11 +728,87 @@ void FB_2i(){
 }
 
 
-void Aging(){
+void Aging(int q)
+{
+    ready_queue rq;
+    // adjust priorities of all processes
+    for (int i = 0; i < process_count; i++)
+    {
+        processes[i].initial_priority = processes[i].service;
+        processes[i].current_priority = processes[i].service;
+        processes[i].waiting_time = 0;
+    }
 
-    
+    process max_priority_process;
+    max_priority_process.name = "";
+    int s = 0;
+    for (int time = 0; time < last_instant; time++)
+    {
 
+        if (max_priority_process.name != "")
+        {
+            // remove the max_priority process from the ready queue
+            rq.erase(max_priority_process); // correct erase
+       
+         while (s < process_count && processes[s].arrival <= time)
+        {
+            processes[s].index = s;
+            rq.enqueue(processes[s]);
+            s++;
+        }
+         for (size_t k = 0; k < rq.queue.size(); k++)
+        { 
+            rq.queue[k].incrementPriority();
+            rq.queue[k].waiting_time++;
+        }
+        max_priority_process.resetPriority();
+        max_priority_process.waiting_time = 0;
+        rq.enqueue(max_priority_process);
+            
+            
+        }
+        else{
+            while (s < process_count && processes[s].arrival <= time)
+        {
+            processes[s].index = s;
+            rq.enqueue(processes[s]);
+            s++;
+        }
+
+        }
+        
+        if (rq.isEmpty())
+        {
+            continue;
+        }
+     
+        max_priority_process = rq.getHighestPriorityProcess();
+        ready_queue copy_rq = rq; // correct copy
+        // getting the max_prioritu process with low arrival time.
+        while (!copy_rq.isEmpty())
+        {
+            process p = copy_rq.getHighestPriorityProcess();
+            if (p.current_priority == max_priority_process.current_priority && p.waiting_time > max_priority_process.waiting_time)
+            {
+                max_priority_process = p;
+            }
+            copy_rq.erase(p);
+        }
+
+        // excuting the process
+        int time_warp = time;
+        while ((time_warp < time + q))
+        {
+            timeline[max_priority_process.index][time_warp] = '*';
+            time_warp++;
+        }
+        time = time_warp - 1;
+
+    }
 }
+
+
+
 
 
 void run(){
@@ -700,7 +840,7 @@ void run(){
                     FB_2i();
                     break;
                 case '8':
-                    Aging();
+                    Aging(alg.q);
                     break;
                 default:
                     cout << "Invalid Algorithm" << endl;
@@ -732,7 +872,7 @@ void run(){
                     FB_2i();
                     break;
                 case '8':
-                    Aging();
+                    Aging(alg.q);
                     break;
                 default:
                     cout << "Invalid Algorithm" << endl;

@@ -27,7 +27,11 @@ clean:
 	rm -f $(OBJS) $(OUTPUT)
 
 run:$(OUTPUT)
+<<<<<<< HEAD
 	./$(OUTPUT) < testcases/01a-input.txt
+=======
+	./$(OUTPUT) < testcases/11a-input.txt
+>>>>>>> Mazen
 
 
 
