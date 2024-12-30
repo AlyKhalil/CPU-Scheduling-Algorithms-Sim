@@ -109,7 +109,7 @@ vector<int> turn_around;
 vector<float> norm_turn;
 
 const string algorithm_names[8] = {"FCFS", "RR", "SPN", "SRT", "HRRN", "FB-1", 
-"FB-2i", "AGING"};
+"FB-2i", "Aging"};
 
 //--------------------Parsing Section-------------------------------------------
 
@@ -805,6 +805,12 @@ void Aging(int q)
         time = time_warp - 1;
 
     }
+
+    for (int i=0 ; i< process_count; i++){
+        finish_time[i] = last_instant;
+    }
+
+
 }
 
 
